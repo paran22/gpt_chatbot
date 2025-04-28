@@ -5,9 +5,14 @@ import { useState, useEffect, useRef } from "react";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  images?: File[];
 }
 
-export default function ChatBot() {
+interface ChatBotProps {
+  images?: File[];
+}
+
+export default function ChatBot({ images }: ChatBotProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -16,8 +21,12 @@ export default function ChatBot() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // 컴포넌트가 마운트될 때 초기 메시지 추가
-    setMessages([{ role: "assistant", content: "안녕, 지금 뭘 하고 있었어?" }]);
+    setMessages([
+      {
+        role: "assistant",
+        content: "이미지를 업로드하고, 궁금한 내용을 입력해주세요.",
+      },
+    ]);
   }, []);
 
   useEffect(() => {
@@ -31,6 +40,7 @@ export default function ChatBot() {
     const newMessage: Message = {
       role: "user",
       content: input,
+      images,
     };
 
     setMessages((prev) => [...prev, newMessage]);
@@ -39,12 +49,15 @@ export default function ChatBot() {
     setIsStreaming(false);
 
     try {
+      const formData = new FormData();
+      formData.append("message", input);
+      images?.forEach((image, index) => {
+        formData.append(`image${index}`, image);
+      });
+
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ message: input }),
+        body: formData,
       });
 
       if (!response.ok) throw new Error("Network response was not ok");
@@ -82,7 +95,6 @@ export default function ChatBot() {
     } finally {
       setIsLoading(false);
       setIsStreaming(false);
-      // 응답이 완료된 후 입력창에 포커스
       inputRef.current?.focus();
     }
   };
